@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>夏日潮汐集市当日利润计算</title>
+<style>
+  :root{ --bg1:#eef2f7; --bg2:#dde6f1; --win:#ffffff; --ink:#1f2733; --muted:#6b7686;
+         --line:#e3e8ef; --accent:#3b82f6; --hot:#ef4444; --hotbg:#fff1f0;
+         --pos:#16a34a; --neg:#dc2626; --buy:#3b82f6; --sell:#f59e0b; }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; font-family:"Segoe UI","Microsoft YaHei",sans-serif; color:var(--ink); }
+  body{ background:linear-gradient(135deg,var(--bg1),var(--bg2)); overflow:hidden; }
+  .taskbar{ position:fixed; top:0; left:0; right:0; height:46px; background:rgba(255,255,255,.85);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); display:flex; align-items:center;
+    padding:0 16px; gap:10px; z-index:999; }
+  .taskbar .logo{ font-weight:700; color:var(--accent); }
+  .taskbar .clock{ margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .win-btn{ cursor:pointer; padding:6px 12px; border:1px solid var(--line); border-radius:8px;
+    background:#fff; font-size:13px; }
+  .win-btn:hover{ background:#f3f6fb; }
+  .desktop{ position:absolute; top:46px; left:0; right:0; bottom:0; }
+  .window{ position:absolute; background:var(--win); border:1px solid var(--line); border-radius:12px;
+    box-shadow:0 12px 34px rgba(20,40,80,.14); min-width:280px; overflow:hidden; }
+  .titlebar{ height:38px; display:flex; align-items:center; padding:0 12px; cursor:move;
+    background:linear-gradient(180deg,#fafbfc,#eef1f6); border-bottom:1px solid var(--line);
+    font-size:14px; font-weight:600; }
+  .titlebar .dots{ margin-left:auto; display:flex; gap:6px; }
+  .dot{ width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .dot.r{ background:#ff5f57; } .dot.y{ background:#febc2e; } .dot.g{ background:#28c840; }
+  .content{ padding:14px; }
+  table{ border-collapse:collapse; width:100%; font-size:12.5px; }
+  th,td{ border:1px solid var(--line); padding:6px 8px; text-align:center; }
+  thead th{ background:#f4f7fb; color:var(--muted); }
+  td.pname{ text-align:left; font-weight:600; white-space:nowrap; }
+  td.buy{ color:var(--buy); } td.sell{ color:var(--sell); }
+  td.pos{ color:var(--pos); font-weight:700; } td.neg{ color:var(--neg); font-weight:700; }
+  .stamp{ color:var(--muted); font-size:12px; }
+  .calc-grid{ display:grid; grid-template-columns:auto 1fr; gap:10px 12px; align-items:center; }
+  .calc-grid label{ font-size:13px; color:var(--muted); }
+  .calc-grid input{ width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; }
+  .calc-out{ display:flex; gap:14px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+  .calc-out > div{ flex:1; display:flex; flex-direction:column; gap:4px; }
+  .calc-out span{ font-size:12px; color:var(--muted); }
+  .calc-out b{ font-size:20px; }
+  .calc-out b.total{ font-size:24px; }
+  .paste-zone{border:2px dashed var(--line); border-radius:10px; padding:24px; text-align:center; color:var(--muted); cursor:pointer; transition:border-color .2s,background .2s;}.paste-zone:hover{ border-color:var(--accent); background:#f0f6ff; }.paste-zone.dragover{ border-color:var(--accent); background:#e6f0ff; }#recog_table th,#recog_table td{ font-size:12.5px; padding:5px 7px; }#recog_table tr.top-spread td{ background:var(--hotbg); font-weight:700; }.recog-status{ font-size:13px; color:var(--muted); margin:6px 0; }.recog-status.ok{ color:var(--pos); } .recog-status.err{ color:var(--neg); }.slot-preview img{ max-width:100%; max-height:150px; border:1px solid var(--line); border-radius:8px; margin-top:8px; }.clipbtn,.clearbtn{ font-size:12px; padding:3px 10px; margin:0 3px; cursor:pointer; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); }.clipbtn:hover{ border-color:var(--accent); color:var(--accent); }.clearbtn:hover{ border-color:var(--neg); color:var(--neg); }#recog_run_btn{ font-size:15px; font-weight:700; padding:8px 26px; cursor:pointer; border:none; border-radius:8px; background:var(--accent); color:#fff; transition:opacity .2s; }#recog_run_btn:disabled{ opacity:.45; cursor:not-allowed; }#recog_run_btn:not(:disabled):hover{ filter:brightness(1.08); }
+</style>
+</head>
+<body>
+  <div class="taskbar">
+    <span class="logo">🌊 夏日潮汐集市当日利润计算</span>
+    <span class="win-btn" onclick="alert('已生成自包含 HTML，可直接分发')">ℹ️ 说明</span>
+    <span class="clock" id="clock"></span>
+  </div>
+
+  <div class="desktop">
+    <!-- 简易利润计算器 -->
+    <div class="window" style="left:40px; top:30px; width:430px;" data-win="calc">
+      <div class="titlebar"><span>🧮 简易利润计算器</span><span class="dots"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i></span></div>
+      <div class="content">
+        <div class="calc-grid">
+          <label>购入价（每件）</label><input id="c_buy" type="number" value="900" min="0" step="1">
+          <label>售出价（每件）</label><input id="c_sell" type="number" value="1450" min="0" step="1">
+          <label>数量</label><input id="c_qty" type="number" value="1" min="0" step="1">
+        </div>
+        <div class="calc-out">
+          <div><span>单件利润</span><b id="c_unit">—</b></div>
+          <div><span>总利润</span><b id="c_total" class="total">—</b></div>
+          <div><span>利润率</span><b id="c_rate">—</b></div>
+        </div>
+        <p class="stamp">利润率 = 利润 ÷ 购入价 ×100%；绿赚红亏。修改任一输入框即时计算。</p>
+      </div>
+    </div>
+
+    <!-- 截图识别（最多三张截图 → 点击「开始识别」→ 逐张识别并合并结果） -->
+    <div class="window" style="left:480px; top:30px; width:1120px;" data-win="recog">
+      <div class="titlebar"><span>📋 截图识别 · 最低价 / 最高价 / 价差</span><span class="dots"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i></span></div>
+      <div class="content">
+        <div style="display:flex; gap:10px; align-items:stretch;">
+          <div class="paste-zone" data-slot="0" style="flex:1; padding:14px;">
+            <p style="font-size:14px; margin:0 0 4px;">🖼️ 截图一</p>
+            <p style="font-size:12px; margin:0 0 8px;">Ctrl+V 粘贴 / 拖入图片 / 点击选择文件</p>
+            <button class="clipbtn" data-slot="0" type="button">📥 读取剪贴板</button>
+            <button class="clearbtn" data-slot="0" type="button" style="display:none;">✕ 清除</button>
+            <div class="slot-preview" id="preview0"></div>
+          </div>
+          <div class="paste-zone" data-slot="1" style="flex:1; padding:14px;">
+            <p style="font-size:14px; margin:0 0 4px;">🖼️ 截图二</p>
+            <p style="font-size:12px; margin:0 0 8px;">Ctrl+V 粘贴 / 拖入图片 / 点击选择文件</p>
+            <button class="clipbtn" data-slot="1" type="button">📥 读取剪贴板</button>
+            <button class="clearbtn" data-slot="1" type="button" style="display:none;">✕ 清除</button>
+            <div class="slot-preview" id="preview1"></div>
+          </div>
+          <div class="paste-zone" data-slot="2" style="flex:1; padding:14px;">
+            <p style="font-size:14px; margin:0 0 4px;">🖼️ 截图三</p>
+            <p style="font-size:12px; margin:0 0 8px;">Ctrl+V 粘贴 / 拖入图片 / 点击选择文件</p>
+            <button class="clipbtn" data-slot="2" type="button">📥 读取剪贴板</button>
+            <button class="clearbtn" data-slot="2" type="button" style="display:none;">✕ 清除</button>
+            <div class="slot-preview" id="preview2"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+          <button id="recog_run_btn" type="button" disabled>🚀 开始识别</button>
+          <span class="recog-status" id="recog_status">请先粘贴 1~3 张游戏截图（三张可凑齐 15 种商品），再点击「开始识别」</span>
+        </div>
+        <div id="recog_result_area" style="display:none;">
+          <table id="recog_table">
+            <thead><tr><th>商品</th><th>最低价</th><th>最高价</th><th>价差</th><th>匹配度</th></tr></thead>
+            <tbody id="recog_tbody"></tbody>
+          </table>
+          <p class="stamp" id="recog_best"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---- 桥接探测 ----
+  // 桌面应用中：pywebview 注入 window.pywebview.api；Electron 注入 window.electronAPI
+  function getBridge() {
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.recognize_image) return 'pywebview';
+    if (window.electronAPI && window.electronAPI.recognize) return 'electron';
+    return null;
+  }
+  async function callRecognize(b64) {
+    const br = getBridge();
+    if (br === 'pywebview') return await window.pywebview.api.recognize_image(b64);
+    if (br === 'electron') return await window.electronAPI.recognize(b64);
+    return null;  // 无桥接
+  }
+
+  // ---- 状态提示 ----
+  function setStatus(msg, cls) {
+    const st = document.getElementById('recog_status');
+    st.className = 'recog-status ' + (cls || '');
+    st.textContent = msg;
+  }
+
+  // ---- 最多三槽位管理：slotImages[i] = dataURL 或 null ----
+  const slotImages = [null, null, null];
+
+  function firstEmptySlot() {
+    for (let i = 0; i < 3; i++) if (!slotImages[i]) return i;
+    return 0;  // 三张都满则覆盖第一张
+  }
+
+  function updateRunBtn() {
+    const btn = document.getElementById('recog_run_btn');
+    btn.disabled = !slotImages.some(v => v);
+  }
+
+  function setSlot(i, dataUrl) {
+    slotImages[i] = dataUrl;
+    document.getElementById('preview' + i).innerHTML =
+      '<img src="' + dataUrl + '" alt="截图' + (i + 1) + '">';
+    document.querySelector('.clearbtn[data-slot="' + i + '"]').style.display = '';
+    updateRunBtn();
+  }
+
+  function clearSlot(i) {
+    slotImages[i] = null;
+    document.getElementById('preview' + i).innerHTML = '';
+    document.querySelector('.clearbtn[data-slot="' + i + '"]').style.display = 'none';
+    updateRunBtn();
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => res(e.target.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // ---- 每个槽位：拖拽 / 点击选择 ----
+  document.querySelectorAll('.paste-zone').forEach(z => {
+    const i = Number(z.dataset.slot);
+    z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragover'); });
+    z.addEventListener('dragleave', () => z.classList.remove('dragover'));
+    z.addEventListener('drop', async e => {
+      e.preventDefault(); z.classList.remove('dragover');
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) {
+        try { setSlot(i, await fileToDataUrl(f)); setStatus('已加载图片 → 截图' + (i + 1), ''); }
+        catch (err) { setStatus('读取图片失败：' + err, 'err'); }
+      }
+    });
+    z.addEventListener('click', e => {
+      if (e.target.closest('button')) return;  // 槽内按钮不触发选文件
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = async () => {
+        if (inp.files[0]) {
+          try { setSlot(i, await fileToDataUrl(inp.files[0])); setStatus('已加载图片 → 截图' + (i + 1), ''); }
+          catch (err) { setStatus('读取图片失败：' + err, 'err'); }
+        }
+      };
+      inp.click();
+    });
+  });
+
+  // ---- 读取剪贴板按钮：走 Python 桥接直接抓剪贴板 ----
+  // WebView2 中页面 paste 事件经常不触发（焦点/快捷键转发问题），
+  // 这是粘贴失效的根因；由 Python 端 ImageGrab 读剪贴板最稳。
+  document.querySelectorAll('.clipbtn').forEach(b => {
+    b.addEventListener('click', async e => {
+      e.stopPropagation();
+      const i = Number(b.dataset.slot);
+      if (!(window.pywebview && window.pywebview.api && window.pywebview.api.read_clipboard)) {
+        setStatus('读取剪贴板需在桌面应用中运行', 'err');
+        return;
+      }
+      setStatus('正在读取剪贴板…', '');
+      try {
+        const r = await window.pywebview.api.read_clipboard();
+        if (r && typeof r === 'object' && r.error) {
+          setStatus('剪贴板读取失败：' + r.error, 'err'); return;
+        }
+        if (!r || typeof r !== 'string') {
+          setStatus('剪贴板中没有图片', 'err'); return;
+        }
+        setSlot(i, r);
+        setStatus('已读取剪贴板图片 → 截图' + (i + 1), 'ok');
+      } catch (err) {
+        setStatus('读取剪贴板出错：' + (err.message || err), 'err');
+      }
+    });
+  });
+
+  // ---- 清除按钮 ----
+  document.querySelectorAll('.clearbtn').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      clearSlot(Number(b.dataset.slot));
+    });
+  });
+
+  // ---- Ctrl+V 粘贴（若 WebView2 触发则优先走这里，放入第一个空槽） ----
+  document.addEventListener('paste', e => {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (let it of items) {
+      if (it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) fileToDataUrl(f).then(u => {
+          const i = firstEmptySlot();
+          setSlot(i, u);
+          setStatus('已粘贴 → 截图' + (i + 1) + '（若无效请用「读取剪贴板」按钮）', '');
+        });
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
+  // ---- 🚀 开始识别：逐张识别 → 按商品名合并 ----
+  document.getElementById('recog_run_btn').addEventListener('click', async () => {
+    const imgs = slotImages.map((v, i) => v ? { v, i } : null).filter(Boolean);
+    if (!imgs.length) { setStatus('请先粘贴至少 1 张截图', 'err'); return; }
+    document.getElementById('recog_result_area').style.display = 'none';
+
+    if (!getBridge()) {
+      // 无桥接 → 演示数据兜底
+      if (window.RECOG_DEMO) {
+        setStatus('（演示数据 · 独立 HTML 无法调用 OCR，请在桌面应用中使用）', 'ok');
+        renderRecog(window.RECOG_DEMO);
+      } else {
+        setStatus('当前环境不支持识别（需在桌面应用中运行）', 'err');
+      }
+      return;
+    }
+
+    const merged = {};   // name -> product（取到有效价格的第一份）
+    const order = [];      // 保持首次出现顺序
+    let lastTotal = 0;
+    try {
+      for (const { v, i } of imgs) {
+        setStatus('正在识别截图' + (i + 1) + '…（首次加载模型约需数秒，请稍候）', '');
+        const r = await callRecognize(v);
+        if (!r || r.error) throw new Error((r && r.error) || '识别返回为空');
+        lastTotal = r.total || lastTotal;
+        (r.products || []).forEach(p => {
+          const hasPrice = p.diff !== null && p.diff !== undefined;
+          if (order.indexOf(p.name) === -1) {
+            order.push(p.name); merged[p.name] = p;
+          } else if (hasPrice && (merged[p.name].diff === null ||
+                       merged[p.name].diff === undefined)) {
+            merged[p.name] = p;  // 前一张没识别到价格，用这张的补上
+          }
+        });
+      }
+      const products = order.map(n => merged[n]);
+      const hit = products.filter(p => p.found && p.diff !== null && p.diff !== undefined);
+      hit.sort((a, b) => b.diff - a.diff);
+      const result = {
+        found: hit.length,
+        total: lastTotal || products.length,
+        products: products,
+        summary: { best_spread: hit[0] || null }
+      };
+      setStatus('识别完成：命中 ' + result.found + '/' + result.total + ' 个商品' +
+                (result.found < result.total ? '（未命中的商品可再粘贴另一张截图补齐）' : ''), 'ok');
+      renderRecog(result);
+    } catch (err) {
+      setStatus('识别出错：' + (err.message || err), 'err');
+    }
+  });
+  updateRunBtn();
+
+  function renderRecog(result) {
+    const tbody = document.getElementById('recog_tbody');
+    const ra = document.getElementById('recog_result_area');
+    tbody.innerHTML = '';
+    // 按价差降序
+    const prods = (result.products || []).slice().sort((a, b) => {
+      const da = a.diff || 0, db = b.diff || 0;
+      return db - da;
+    });
+    let maxDiff = 0;
+    prods.forEach(p => { if (p.diff && p.diff > maxDiff) maxDiff = p.diff; });
+    prods.forEach(p => {
+      const found = p.found !== false;
+      const isTop = found && p.diff === maxDiff && maxDiff > 0;
+      const tr = document.createElement('tr');
+      if (isTop) tr.className = 'top-spread';
+      const fmt = v => (v !== null && v !== undefined) ? '¥' + Number(v).toLocaleString('zh-CN') : '—';
+      const score = found && p.score !== null ? (p.score * 100).toFixed(0) + '%' : '—';
+      const diffCls = found && p.diff !== null ? (p.diff > 0 ? 'pos' : 'neg') : '';
+      const diffSign = found && p.diff !== null && p.diff > 0 ? '+' : '';
+      tr.innerHTML =
+        '<td class="pname">' + p.name + '</td>' +
+        '<td>' + (found ? fmt(p.min_price) : '未识别') + '</td>' +
+        '<td>' + (found ? fmt(p.max_price) : '未识别') + '</td>' +
+        '<td class="' + diffCls + '">' + (found && p.diff !== null ? diffSign + '¥' + Math.abs(Number(p.diff)).toLocaleString('zh-CN') : '—') + '</td>' +
+        '<td>' + score + '</td>';
+      tbody.appendChild(tr);
+    });
+    ra.style.display = 'block';
+    const bestEl = document.getElementById('recog_best');
+    if (result.summary && result.summary.best_spread) {
+      const b = result.summary.best_spread;
+      bestEl.textContent = '套利空间最大：' + b.name + '（价差 ¥' + Number(b.diff).toLocaleString('zh-CN') + '）';
+    } else {
+      bestEl.textContent = '';
+    }
+  }
+
+  // ---- 可拖拽 ----
+  document.querySelectorAll('.window').forEach(w=>{
+    const bar=w.querySelector('.titlebar'); let sx,sy,ox,oy,drag=false;
+    bar.addEventListener('mousedown',e=>{ drag=true; sx=e.clientX; sy=e.clientY;
+      ox=w.offsetLeft; oy=w.offsetTop; });
+    document.addEventListener('mousemove',e=>{ if(!drag)return;
+      w.style.left=(ox+e.clientX-sx)+'px'; w.style.top=(oy+e.clientY-sy)+'px'; });
+    document.addEventListener('mouseup',()=>drag=false);
+  });
+
+  // ---- 时钟 ----
+  function tick(){ const d=new Date(); document.getElementById('clock').textContent=
+    d.toLocaleString('zh-CN',{hour12:false}); }
+  tick(); setInterval(tick,1000);
+
+  // ---- 简易利润计算器 ----
+  function calc(){
+    const b=parseFloat(document.getElementById('c_buy').value);
+    const s=parseFloat(document.getElementById('c_sell').value);
+    const q=parseFloat(document.getElementById('c_qty').value)||0;
+    const ub=document.getElementById('c_unit');
+    const tb=document.getElementById('c_total');
+    const rb=document.getElementById('c_rate');
+    if(isNaN(b)||isNaN(s)){ ub.textContent='—'; tb.textContent='—'; rb.textContent='—'; return; }
+    const unit=s-b;
+    const total=unit*q;
+    const rate=(b!==0)?(unit/b*100):null;
+    const fmtMoney=v=> v>=0?'+¥'+Math.abs(v).toLocaleString('zh-CN')
+                           :'−¥'+Math.abs(v).toLocaleString('zh-CN');
+    const setColor=(el,v)=> el.style.color = v>=0?'var(--pos)':'var(--neg)';
+    ub.textContent=fmtMoney(unit); setColor(ub,unit);
+    tb.textContent=fmtMoney(total); setColor(tb,total);
+    rb.textContent = rate===null?'—':(rate>=0?'+':'−')+Math.abs(rate).toFixed(1)+'%';
+    setColor(rb, rate===null?0:rate);
+  }
+  ['c_buy','c_sell','c_qty'].forEach(id=>
+    document.getElementById(id).addEventListener('input',calc));
+  calc();
+window.RECOG_DEMO = {"found": 15, "total": 15, "products": [{"name": "迪莫物资包", "found": true, "min_price": 396.0, "max_price": 499.0, "diff": 103.0, "score": 1.0}, {"name": "火花物资包", "found": true, "min_price": 465.0, "max_price": 493.0, "diff": 28.0, "score": 1.0}, {"name": "喵喵物资包", "found": true, "min_price": 513.0, "max_price": 578.0, "diff": 65.0, "score": 1.0}, {"name": "水蓝蓝物资包", "found": true, "min_price": 444.0, "max_price": 594.0, "diff": 150.0, "score": 1.0}, {"name": "果冻物资包", "found": true, "min_price": 1698.0, "max_price": 2056.0, "diff": 358.0, "score": 1.0}, {"name": "大耳帽兜物资包", "found": true, "min_price": 1266.0, "max_price": 1699.0, "diff": 433.0, "score": 1.0}, {"name": "小黑猫物资包", "found": true, "min_price": 2899.0, "max_price": 3263.0, "diff": 364.0, "score": 0.952}, {"name": "机械方方物资包", "found": true, "min_price": 2843.0, "max_price": 2989.0, "diff": 146.0, "score": 0.956}, {"name": "护主犬物资包", "found": true, "min_price": 3860.0, "max_price": 4118.0, "diff": 258.0, "score": 0.942}, {"name": "厉毒小萝物资包", "found": true, "min_price": 1966.0, "max_price": 5165.0, "diff": 3199.0, "score": 0.938}, {"name": "小翼龙物资包", "found": true, "min_price": 4879.0, "max_price": 5554.0, "diff": 675.0, "score": 0.902}, {"name": "奔波鼠物资包", "found": true, "min_price": 4620.0, "max_price": 4920.0, "diff": 300.0, "score": 0.898}, {"name": "甜筒脆脆物资包", "found": true, "min_price": 5625.0, "max_price": 6416.0, "diff": 791.0, "score": 0.891}, {"name": "火尾瓦特物资包", "found": true, "min_price": 5783.0, "max_price": 8180.0, "diff": 2397.0, "score": 0.936}, {"name": "小独角兽物资包", "found": true, "min_price": 6705.0, "max_price": 8383.0, "diff": 1678.0, "score": 0.999}], "summary": {"best_spread": {"name": "厉毒小萝物资包", "found": true, "match": {"score": 0.938, "x": 774, "y": 394, "w": 160, "h": 160}, "min_price": 1966.0, "max_price": 5165.0, "diff": 3199.0, "numbers": [1966.0, 1966.0, 5165.0, 5165.0], "score": 0.938}}};
+</script>
+</body>
+</html>

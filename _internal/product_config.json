@@ -1,0 +1,22 @@
+{
+  "threshold": 0.55,
+  "search_margin": 4.0,
+  "references_dir": "references",
+  "products": [
+    { "name": "迪莫物资包", "icon": "ref_01.jpg" },
+    { "name": "火花物资包", "icon": "ref_02.jpg" },
+    { "name": "喵喵物资包", "icon": "ref_03.jpg" },
+    { "name": "水蓝蓝物资包", "icon": "ref_04.jpg" },
+    { "name": "果冻物资包", "icon": "ref_05.jpg" },
+    { "name": "大耳帽兜物资包", "icon": "ref_06.jpg" },
+    { "name": "小黑猫物资包", "icon": "ref_07.jpg" },
+    { "name": "机械方方物资包", "icon": "ref_08.jpg" },
+    { "name": "护主犬物资包", "icon": "ref_09.jpg" },
+    { "name": "厉毒小萝物资包", "icon": "ref_10.jpg" },
+    { "name": "小翼龙物资包", "icon": "ref_11.jpg" },
+    { "name": "奔波鼠物资包", "icon": "ref_12.jpg" },
+    { "name": "甜筒脆脆物资包", "icon": "ref_13.jpg" },
+    { "name": "火尾瓦特物资包", "icon": "ref_14.jpg" },
+    { "name": "小独角兽物资包", "icon": "ref_15.jpg" }
+  ]
+}
